@@ -1,0 +1,100 @@
+---
+title: "Projekt Corona"
+author: "Jonas Wortmann"
+date: "2023-04-17"
+output: html_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## A1
+
+Wir wollen den Verlauf einer Infektion innerhalb einer homogenen
+Population untersuchen. Hierzu verwenden wir das SIR Modell als
+'stochastic individual contact model (ICM)', d.h. die Simulation
+verl¨auft auf individueller Ebene mit stochastischen Uberg ¨ ¨angen von
+SIR. Untersuchen Sie eine Population von N = 5000 Personen, von denen
+zum Zeitpunkt t = 0, I0 = 10 Individuen bereits infiziert sind. Zu
+Beginn soll es noch keine immunisierten Personen geben (R0 = 0). Wir
+gehen davon aus, dass es bei einer Begegnung von einer infizierbaren zu
+einer bereits infizierten Person mit einer Wahrscheinlichkeit von
+inf.prob = 10% zu einer Ansteckung kommt. Ferner gehen Sie von einer
+Begegnungsrate einer infizierten Person zu infizierbaren Personen von
+act.rate = 10 pro Tag aus. Die Zeit von einer Infektion bis zu einer
+Immunisierung betrage 14 Tage. Ferner gehen Sie bitte von einer Geburt
+in 100 Tagen so wie einer Todesrate von jeweils einer von 90 Personen
+bei gesunden und Immunen, bzw. von zwei von 90 Personen unter den
+infizierten aus. \### a) Simulieren Sie den Verlauf der Verbreitung in
+50 Tagen und stellen Sie die Anzahl von infizierbaren, infizierten und
+immunisierten Personen in einer geeigneten Graphik dar.
+
+```{r}
+library(EpiModel)
+N <- 5000
+I_0 <- 10 # bereits infizierte Personen zum Zeitpunkt t=0
+R_0 <- 0 # Anzahl immunisierte Personen zum Zeitpunkt t=0
+inf.prob <- 0.1 # Wahrscheinlichkeit einer Infektion
+act.rate <- 10 # Begegnungsrate einer infizierten Person zu infizierbaren Person
+rec.rate <- 1/14 # recovery rate
+birth_rate <- 1/100
+I.death_rate <- 2/90
+S.death_rate <- 1/90
+n <- 50 
+
+#  compartment model
+param <- param.icm(inf.prob=inf.prob,
+          act.rate=act.rate,
+          rec.rate=rec.rate,
+          di.rate=I.death_rate,
+          ds.rate=S.death_rate,
+          dr.rate=S.death_rate,
+          a.rate=birth_rate
+          )
+
+init <- init.icm(s.num=(N-I_0),
+         i.num=I_0,
+         r.num=R_0,
+        
+         )
+
+control <- control.icm(type="SIR", nsteps=n)
+
+mod <- icm(param, init, control)
+
+plot(mod)
+```
+
+### b) Gehen Sie davon aus, dass zum Zeitpunkt tH = 0 Hygienevorschriften erlassen wurden (z.B.
+Händewaschen, Mundschutz etc.). Dies beeinflusst die Ansteckungswahrscheinlichkeit (inf.prob)
+und senkt sie auf 5%. Simulieren Sie die neue Situation und vergleichen Sie diese mit Ihren
+Ergebnissen aus a).
+
+```{r}
+inf.prob <- 0.05
+param <- param.icm(inf.prob=inf.prob,
+          act.rate=act.rate,
+          rec.rate=rec.rate,
+          di.rate=I.death_rate,
+          ds.rate=S.death_rate,
+          dr.rate=S.death_rate,
+          a.rate=birth_rate
+          )
+
+init <- init.icm(s.num=(N-I_0),
+         i.num=I_0,
+         r.num=R_0,
+        
+         )
+
+control <- control.icm(type="SIR", nsteps=n)
+
+mod <- icm(param, init, control)
+
+plot(mod)
+```
+
