@@ -1,0 +1,51 @@
+---
+title: "Cross_Validation"
+author: "Jonas Wortmann"
+date: "2023-04-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Cross Validation
+
+```{r}
+load("data/Donald.RData")
+train_test_split <- sample(c(rep(0, 100), rep(1, 50)))
+train <- Donald_1[train_test_split == 0,]
+train$group <- "TRAIN"
+test <- Donald_1[train_test_split == 1,]
+test$group <- "TEST"
+
+require(ggplot2)
+require(gridExtra)
+
+ggplot() +
+  geom_histogram(data=train, mapping=aes(x=Alter, fill=group, col=group),  alpha=0.5) +
+  geom_histogram(data=test, mapping=aes(x=Alter, , fill=group, col=group), alpha=0.5)
+
+ggplot() +
+  geom_bar(data=train, mapping=aes(x=Geschlecht, y=..count../sum(..count..), fill=group, col=group), alpha=0.5) +
+  geom_bar(data=test, mapping=aes(x=Geschlecht, y=..count../sum(..count..), fill=group, col=group), alpha=0.5)
+
+ggplot() +
+  geom_bar(data=train, mapping=aes(x=Minderheit, y=..count../sum(..count..), fill=group, col=group), alpha=0.5) +
+  geom_bar(data=test, mapping=aes(x=Minderheit, y=..count../sum(..count..), fill=group, col=group), alpha=0.5)
+
+ggplot() +
+  geom_boxplot(data=train, mapping=aes(x=group, y=Fremdenfeindlich, fill=group, col=group)) +
+  geom_boxplot(data=test, mapping=aes(x=group, y=Fremdenfeindlich, fill=group, col=group))
+
+ggplot() +
+  geom_boxplot(data=train, mapping=aes(x=group, y=IQ, fill=group, col=group)) +
+  geom_boxplot(data=test, mapping=aes(x=group, y=IQ, fill=group, col=group))
+
+ggplot() +
+  geom_boxplot(data=train, mapping=aes(x=group, y=Trump, fill=group, col=group)) +
+  geom_boxplot(data=test, mapping=aes(x=group, y=Trump, fill=group, col=group)) +
+  ylab("Trump Zustimmung (%)")
+
+
+```
