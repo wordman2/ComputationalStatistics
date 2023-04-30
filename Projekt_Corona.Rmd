@@ -44,9 +44,9 @@ rec.rate <- 1/14 # recovery rate
 birth_rate <- 1/100
 I.death_rate <- 2/90
 S.death_rate <- 1/90
-n <- 50 
+n <- 50 # Anzahl Tage der Simulation
 
-#  compartment model
+#  stochastic individual contact model (SIR)
 param <- param.icm(inf.prob=inf.prob,
           act.rate=act.rate,
           rec.rate=rec.rate,
@@ -64,19 +64,17 @@ init <- init.icm(s.num=(N-I_0),
 
 control <- control.icm(type="SIR", nsteps=n)
 
-mod <- icm(param, init, control)
+mod_a <- icm(param, init, control)
 
-plot(mod)
+plot(mod_a)
+help(plot)
 ```
 
-### b) Gehen Sie davon aus, dass zum Zeitpunkt tH = 0 Hygienevorschriften erlassen wurden (z.B.
-Händewaschen, Mundschutz etc.). Dies beeinflusst die Ansteckungswahrscheinlichkeit (inf.prob)
-und senkt sie auf 5%. Simulieren Sie die neue Situation und vergleichen Sie diese mit Ihren
-Ergebnissen aus a).
+### b) Gehen Sie davon aus, dass zum Zeitpunkt tH = 0 Hygienevorschriften erlassen wurden (z.B.Händewaschen, Mundschutz etc.). Dies beeinflusst die Ansteckungswahrscheinlichkeit (inf.prob) und senkt sie auf 5%. Simulieren Sie die neue Situation und vergleichen Sie diese mit Ihren Ergebnissen aus a).
 
 ```{r}
-inf.prob <- 0.05
-param <- param.icm(inf.prob=inf.prob,
+inf.prob_5 <- 0.05
+param <- param.icm(inf.prob=inf.prob_5,
           act.rate=act.rate,
           rec.rate=rec.rate,
           di.rate=I.death_rate,
@@ -85,16 +83,133 @@ param <- param.icm(inf.prob=inf.prob,
           a.rate=birth_rate
           )
 
-init <- init.icm(s.num=(N-I_0),
-         i.num=I_0,
-         r.num=R_0,
-        
-         )
+mod_b <- icm(param, init, control)
 
-control <- control.icm(type="SIR", nsteps=n)
-
-mod <- icm(param, init, control)
-
-plot(mod)
+plot(mod_b, main="5% Ansteckungswahrscheinlichkeit")
+plot(mod_a, main="10% Ansteckungswahrscheinlichkeit")
 ```
 
+Durch die Maßnahmen flacht die Ansteckungskurve ab und geht langsamer
+auf den Hochpunkt zu.
+
+### c) Gehen Sie nun davon aus, dass die Population keine Hygienemaßnahmen ergreift, aber zum Zeitpunkt tK = 0 den Kontakt einschränkt. D.h. hier wird die Begegnungsrate gesenkt (auf 5 bzw. 2). Vergleichen Sie Ihre Ergebnisse mit a) und b) und interpretieren diese.
+
+```{r}
+act.rate_5 <- 5
+act.rate_2 <- 2
+  
+param <- param.icm(inf.prob=inf.prob,
+          act.rate=act.rate_5,
+          rec.rate=rec.rate,
+          di.rate=I.death_rate,
+          ds.rate=S.death_rate,
+          dr.rate=S.death_rate,
+          a.rate=birth_rate
+          )
+
+mod_c <- icm(param, init, control)
+
+param <- param.icm(inf.prob=inf.prob,
+          act.rate=act.rate_2,
+          rec.rate=rec.rate,
+          di.rate=I.death_rate,
+          ds.rate=S.death_rate,
+          dr.rate=S.death_rate,
+          a.rate=birth_rate
+          )
+
+mod_d <- icm(param, init, control)
+
+
+
+plot(mod_a, main="Begegnungsrate 10")
+plot(mod_c, main="Begegnungsrate 5")
+plot(mod_d, main="Begegnungsrate 2")
+```
+
+Analog zu b) flacht die Ansteckungskurve durch eine geringere
+Begegnungsrate ab. Da sich weniger Infizierte mit nicht-Infizierten
+begegnen ist die Wahrscheinlichkeit sich anzustecken geringer. Eine
+
+### d) Kombinieren Sie die Maßnahmen aus b) und c) und vergleichen auch diesen Effekt mit Ihren vorherigen Befunden.
+
+```{r}
+param <- param.icm(inf.prob=inf.prob_5,
+          act.rate=act.rate_5,
+          rec.rate=rec.rate,
+          di.rate=I.death_rate,
+          ds.rate=S.death_rate,
+          dr.rate=S.death_rate,
+          a.rate=birth_rate
+          )
+control_n_100 <- control.icm(type="SIR", nsteps=100) # um den Verlauf besser vergleichen zu können unter den zwei neuen Modellen wird jetzt auf 100 Tage simuliert
+mod_e <- icm(param, init, control_n_100)
+
+param <- param.icm(inf.prob=inf.prob_5,
+          act.rate=act.rate_2,
+          rec.rate=rec.rate,
+          di.rate=I.death_rate,
+          ds.rate=S.death_rate,
+          dr.rate=S.death_rate,
+          a.rate=birth_rate
+          )
+mod_f <- icm(param, init, control_n_100)
+
+plot(mod_a, main="Begegnungsrate 10, Ansteckungswahrscheinlichkeit 10%")
+plot(mod_c, main="Begegnungsrate 5, Ansteckungswahrscheinlichkeit 10%")
+plot(mod_e, main="Begegnungsrate 5, Ansteckungswahrscheinlichkeit 5%")
+plot(mod_f, main="Begegnungsrate 2, Ansteckungswahrscheinlichkeit 5%")
+
+```
+
+Weiterhin gilt, je geringer die Ansteckungswahrscheinlichkeit und
+Begegnungsrate desto langsamer ist der Infektionsverlauf. Interessant
+ist, dass bei einer Ansteckungswahrscheinlichkeit von 5% und
+Begegnungsrate von 2 die Kurve so abflacht, dass man die Steigung der
+Infektionszahl selbst nach 100 Tagen nicht wahrnimmt.
+
+### e) Variieren Sie die Zeitpunkte tH und tK und setzen den Maßnahmen gegebenenfalls auch ein Ende. Vergleichen Sie auch jetzt die Verläufe und interpretieren diese.
+
+```{r}
+
+```
+
+## A2
+
+### a) Inzwischen ist bekannt, dass man sich nach einer gewissen Zeit erneut anstecken kann. Was bedeutet das fur unser Modell? Ist es noch ein SIR-Modell? Was wäre hier besser? Setzen Sie das neue Modell (auch als stochastic individual contact model (ICM)) in einer Simulation um, 'spielen' mit den entsprechenden Parametern, stellen die Ergebnisse in geeigneten Graphiken dar und interpretieren Ihre Befunde.
+
+Wenn sich Personen nach einer gewissen Zeit erneut anstecken können,
+bedeutet das, dass der Zustand "Recovered" nach einer bestimmten Zeit
+*t* in den Zustand "Susceptible" übergeht. Das SIS
+(Susceptible-Infectious-Susceptible)-Modell wäre in diesem Fall besser,
+da es Langzeitimmunität ausschließt.
+
+```{r}
+control <- control.icm(type="SIS", nsteps=n)
+
+mod_sis <- icm(param, init, control)
+plot(mod_sis)
+legend(x="topright",legend=c("Susceptible", "Infected"), col=c(1,2))
+```
+
+### b) Im Verlauf der Pandemie gab es zahlreiche verschiedene Virus-Varianten. Was bedeuten diese Varianten für die Modellierung? Wie könnte man ein Modell mit verschiedenen Varianten umsetzen und welche Probleme können sich dabei ergeben?
+
+Die Varianten unterscheiden sich u. a. an der
+Ansteckungswahrscheinlichkeit, die Todesrate und Recovery Rate. Um die
+Verbreitung von verschiedenen Varianten umzusetzen, müsste man pro
+Virus-Variante ein eigenes Modell mit den entsprechenenden Parametern
+aufsetzen und sie parallel simulieren. Da die Simulationen im R-Paket
+EpiModel isoliert voneinander ausgeführt werden, können bereits
+Infizierte einer Variante theoretisch mehrmals infiziert sein, d. h. die
+Zustände verschiedener Virusvarianten könnten überlappen.
+
+### c) Wie kann man die Impfungen mit einbeziehen? Auf welche Parameter haben Impfungen Einfluss? Sind diese Einflusse konstant?
+
+Impfungen haben Einfluss auf die Ansteckungswahrscheinlichkeit und die
+Schwere der Erkrankung, d. h. sie haben auch Einfluss auf die Todesrate
+und die Länge der Erkrankung. Da Impfungen nicht konstant vor einer
+Ansteckung oder schweren Verlauf schützen, müsste dafür ein geeignete
+Modellierung ausgewählt werden, die pro geimpfte Person die Tage nach
+Impfung berücksichtigt, d. h. dass die genannten Parameter
+(Ansteckungswahrscheinlichkeit & Länge der Erkrankung) sich im Laufe der
+Simulation pro Person ändern.
