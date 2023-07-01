@@ -1,0 +1,98 @@
+---
+title: "Monte_Carlo-Simulation"
+author: "Jonas Wortmann"
+date: "2023-07-01"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Monte Carlo Integration
+
+### Kreiszahl approximieren
+
+```{r}
+set.seed(1)
+k <- 1:8
+n <- 10^k
+approximationen <- c()
+error <- c()
+for(i in k){
+  # generiere n Tupel
+  x <- runif(n[i],-1,1)
+  y <- runif(n[i],-1,1)
+  
+  # approximiere pi
+  z <- 4 * sum(x^2 + y^2 <= 1) / n[i]
+  approximationen <- c(approximationen, z)
+  error <- c(error, abs(z-pi))
+}
+
+result <- data.frame(n=n, approximation=approximationen, error=error)
+print(result)
+
+```
+
+Nach der Tschebyscheffschen Ungleichung muss ein n \>= 53935.5 gewählt werden, um zu einer Wahrscheinlichkeit von 95% eine Genauigkeit von 0.001 zu erreichen. In der Simulation wurde selbst mit n = 10\^6 und 10\^5 ein größerer Fehler als 0.001 errreicht.
+
+### Überprüfung des Werts 1.96 als 0.975-Quantil der Standardnormalverteilung
+
+```{r}
+errors <- c()
+approximationen <- c()
+for(i in k){
+  x <- runif(n[i], -1.96, 1.96)
+  z <- mean(2*1.96*dnorm(x)) # dnorm = Dichte der Standardnormalverteilung
+  approximationen <- c(approximationen, z)
+  error <- abs(z-0.95)
+  errors <- c(errors, error)
+}
+result <- data.frame(n=n, approximation=approximationen, error=errors)
+result
+```
+
+```{r}
+library(ggplot2)
+n <- c(10**5, 10**6, 10**7)
+result <- list()
+j <- 1
+for(ni in n){
+  approximationen <- c()
+  for(i in 1:200){
+    x <- runif(ni, -1.96, 1.96)
+    z <- mean(2*1.96*dnorm(x)) # dnorm = Dichte der Standardnormalverteilung
+    approximationen <- c(approximationen, z)
+  }
+  result[[j]] <- approximationen
+  j <- j+1
+}
+
+
+ggplot() +
+  geom_histogram(data=data.frame(values=result[[1]]), aes(x=values, fill="10^5"),) +
+  geom_histogram(data=data.frame(values=result[[2]]), aes(x=values, fill="10^6")) +
+  geom_histogram(data=data.frame(values=result[[3]]), aes(x=values, fill="10^7")) +
+  labs()
+
+```
+Je höher n gewählt wird, desto präziser ist die Approximation des 0.975-Quantils.
+
+### Fläche berechnen mit Hilfe der Monte-Carlo-Integration
+```{r}
+n <- 10^5
+points <- c()
+
+x <- runif(n, -7,7)
+y <- runif(n, -4,4)
+fläche <- ((x^2/49) + (y^2) / 9 - 1 <= 0) &(((abs(x) >= 4) & ((-3*sqrt(33))/7 <= y & y <= 0)) | (abs(x) >= 3 & y >= 0)) | (-3 <= y & y <= 0 & -4 <= x & x <= 4 &((( -3*sqrt(33)-7)*x^2)/112 + abs(x)/2 + sqrt(1-(abs(abs(x)-2)-1)^2) -y -3 <=0)) | (y >= 0 & 3/4 <= abs(x) & abs(x) <= 1 & -8*abs(x)-y+9>=0) |(1/2<=abs(x) & abs(x)<=3/4 & 3* abs(x) - y +3/4 >= 0 & y >= 0) | (abs(x) <= 1/2 & y >= 0 & 9/4 - y >= 0) |(1<= abs(x) & abs(x)<=3 & y >= 0 & -abs(x)/2 -3/7*sqrt(10)*sqrt(4-(abs(x) -1)^2) - y +(6*sqrt(10))/7 + 3/2 >= 0)
+plot(x[fläche], y[fläche])
+
+b <- 7
+a <- -7
+d <- 4
+c <- -4
+A <- (b-a)*(d-c)*sum(fläche)
+A
+```
