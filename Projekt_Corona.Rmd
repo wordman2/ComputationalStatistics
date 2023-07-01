@@ -17,21 +17,20 @@ knitr::opts_chunk$set(echo = TRUE)
 Wir wollen den Verlauf einer Infektion innerhalb einer homogenen
 Population untersuchen. Hierzu verwenden wir das SIR Modell als
 'stochastic individual contact model (ICM)', d.h. die Simulation
-verl¨auft auf individueller Ebene mit stochastischen Uberg ¨ ¨angen von
-SIR. Untersuchen Sie eine Population von N = 5000 Personen, von denen
-zum Zeitpunkt t = 0, I0 = 10 Individuen bereits infiziert sind. Zu
-Beginn soll es noch keine immunisierten Personen geben (R0 = 0). Wir
-gehen davon aus, dass es bei einer Begegnung von einer infizierbaren zu
-einer bereits infizierten Person mit einer Wahrscheinlichkeit von
-inf.prob = 10% zu einer Ansteckung kommt. Ferner gehen Sie von einer
-Begegnungsrate einer infizierten Person zu infizierbaren Personen von
-act.rate = 10 pro Tag aus. Die Zeit von einer Infektion bis zu einer
-Immunisierung betrage 14 Tage. Ferner gehen Sie bitte von einer Geburt
-in 100 Tagen so wie einer Todesrate von jeweils einer von 90 Personen
-bei gesunden und Immunen, bzw. von zwei von 90 Personen unter den
-infizierten aus. \### a) Simulieren Sie den Verlauf der Verbreitung in
-50 Tagen und stellen Sie die Anzahl von infizierbaren, infizierten und
-immunisierten Personen in einer geeigneten Graphik dar.
+verläuft auf individueller Ebene mit stochastischen Übergängen von SIR.
+Untersuchen Sie eine Population von N = 5000 Personen, von denen zum
+Zeitpunkt t = 0, I = 10 Individuen bereits infiziert sind. Zu Beginn
+soll es noch keine immunisierten Personen geben (R0 = 0). Wir gehen
+davon aus, dass es bei einer Begegnung von einer infizierbaren zu einer
+bereits infizierten Person mit einer Wahrscheinlichkeit von inf.prob =
+10% zu einer Ansteckung kommt. Ferner gehen Sie von einer Begegnungsrate
+einer infizierten Person zu infizierbaren Personen von act.rate = 10 pro
+Tag aus. Die Zeit von einer Infektion bis zu einer Immunisierung betrage
+14 Tage. Ferner gehen Sie bitte von einer Geburt in 100 Tagen so wie
+einer Todesrate von jeweils einer von 90 Personen bei gesunden und
+Immunen, bzw. von zwei von 90 Personen unter den infizierten aus.
+
+### **a) Simulieren Sie den Verlauf der Verbreitung in 50 Tagen und stellen Sie die Anzahl von infizierbaren, infizierten und immunisierten Personen in einer geeigneten Graphik dar.**
 
 ```{r}
 library(EpiModel)
@@ -42,8 +41,8 @@ inf.prob <- 0.1 # Wahrscheinlichkeit einer Infektion
 act.rate <- 10 # Begegnungsrate einer infizierten Person zu infizierbaren Person
 rec.rate <- 1/14 # recovery rate
 birth_rate <- 1/100
-I.death_rate <- 2/90
-S.death_rate <- 1/90
+I.death_rate <- 2/90 # Todesrate einer infizierten Person
+S.death_rate <- 1/90 # Todesrate einer gesunden Person
 n <- 50 # Anzahl Tage der Simulation
 
 #  stochastic individual contact model (SIR)
@@ -53,10 +52,10 @@ param <- param.icm(inf.prob=inf.prob,
           di.rate=I.death_rate,
           ds.rate=S.death_rate,
           dr.rate=S.death_rate,
-          a.rate=birth_rate
+          a.rate=birth_rate,
           )
 
-init <- init.icm(s.num=(N-I_0),
+init <- init.icm(s.num=(N-I_0), # Anzahl gesunde Personen zum Zeitpunkt t=0
          i.num=I_0,
          r.num=R_0,
         
@@ -67,7 +66,6 @@ control <- control.icm(type="SIR", nsteps=n)
 mod_a <- icm(param, init, control)
 
 plot(mod_a)
-help(plot)
 ```
 
 ### b) Gehen Sie davon aus, dass zum Zeitpunkt tH = 0 Hygienevorschriften erlassen wurden (z.B.Händewaschen, Mundschutz etc.). Dies beeinflusst die Ansteckungswahrscheinlichkeit (inf.prob) und senkt sie auf 5%. Simulieren Sie die neue Situation und vergleichen Sie diese mit Ihren Ergebnissen aus a).
@@ -129,7 +127,7 @@ plot(mod_d, main="Begegnungsrate 2")
 
 Analog zu b) flacht die Ansteckungskurve durch eine geringere
 Begegnungsrate ab. Da sich weniger Infizierte mit nicht-Infizierten
-begegnen ist die Wahrscheinlichkeit sich anzustecken geringer. Eine
+begegnen ist die Wahrscheinlichkeit sich anzustecken geringer.
 
 ### d) Kombinieren Sie die Maßnahmen aus b) und c) und vergleichen auch diesen Effekt mit Ihren vorherigen Befunden.
 
@@ -171,12 +169,50 @@ Infektionszahl selbst nach 100 Tagen nicht wahrnimmt.
 ### e) Variieren Sie die Zeitpunkte tH und tK und setzen den Maßnahmen gegebenenfalls auch ein Ende. Vergleichen Sie auch jetzt die Verläufe und interpretieren diese.
 
 ```{r}
+param_0.5_10d <- param.icm(inf.prob=inf.prob,
+          act.rate=act.rate,
+          rec.rate=rec.rate,
+          di.rate=I.death_rate,
+          ds.rate=S.death_rate,
+          dr.rate=S.death_rate,
+          a.rate=birth_rate,
+          inter.eff= 0.5, # steuert die Effizienz der Maßnahmen
+          inter.start = 10 # Start der Maßnahmen nach x Tagen
+          )
 
+param_0.5_20d <- param.icm(inf.prob=inf.prob,
+          act.rate=act.rate,
+          rec.rate=rec.rate,
+          di.rate=I.death_rate,
+          ds.rate=S.death_rate,
+          dr.rate=S.death_rate,
+          a.rate=birth_rate,
+          inter.eff= 0.5, # steuert die Effizienz der Maßnahmen
+          inter.start = 20 # Start der Maßnahmen nach x Tagen
+          )
+
+
+
+control <- control.icm(type="SIR", nsteps=n)
+
+mod_a_maßnahmen_0.5_10d <- icm(param_0.5_10d, init, control)
+mod_a_maßnahmen_0.5_20d <- icm(param_0.5_20d, init, control)
+
+
+plot(mod_a, main="keine Maßnahmen")
+plot(mod_a_maßnahmen_0.5_10d, main="Maßnahmen nach 10 Tagen")
+plot(mod_a_maßnahmen_0.5_20d, main="Maßnahmen nach 20 Tagen")
 ```
+
+Wenn nach 10 Tagen Maßnahmen eingeführt werden, und die Maßnahmen die
+Infektionswahrscheinlichkeit pro Kontakt auf 50 % reduziert, dann flacht
+die Infektionskurve ab. Wenn die Maßnahmen hingegen erst 20 Tagen
+eintreten, flacht die Kurve erst nach der Spitze schneller ab und die
+Genesungskurve steigt schneller als ohne Maßnahmen.
 
 ## A2
 
-### a) Inzwischen ist bekannt, dass man sich nach einer gewissen Zeit erneut anstecken kann. Was bedeutet das fur unser Modell? Ist es noch ein SIR-Modell? Was wäre hier besser? Setzen Sie das neue Modell (auch als stochastic individual contact model (ICM)) in einer Simulation um, 'spielen' mit den entsprechenden Parametern, stellen die Ergebnisse in geeigneten Graphiken dar und interpretieren Ihre Befunde.
+### a) Inzwischen ist bekannt, dass man sich nach einer gewissen Zeit erneut anstecken kann. Was bedeutet das für unser Modell? Ist es noch ein SIR-Modell? Was wäre hier besser? Setzen Sie das neue Modell (auch als stochastic individual contact model (ICM)) in einer Simulation um, 'spielen' mit den entsprechenden Parametern, stellen die Ergebnisse in geeigneten Graphiken dar und interpretieren Ihre Befunde.
 
 Wenn sich Personen nach einer gewissen Zeit erneut anstecken können,
 bedeutet das, dass der Zustand "Recovered" nach einer bestimmten Zeit
@@ -185,12 +221,44 @@ bedeutet das, dass der Zustand "Recovered" nach einer bestimmten Zeit
 da es Langzeitimmunität ausschließt.
 
 ```{r}
+
+n <- 50
 control <- control.icm(type="SIS", nsteps=n)
 
-mod_sis <- icm(param, init, control)
-plot(mod_sis)
-legend(x="topright",legend=c("Susceptible", "Infected"), col=c(1,2))
+for (i in seq(2,10,2)){ #vary act rate
+  param <- param.icm(inf.prob=inf.prob,
+          act.rate=i,
+          rec.rate=rec.rate,
+          di.rate=I.death_rate,
+          ds.rate=S.death_rate,
+          dr.rate=S.death_rate,
+          a.rate=birth_rate
+          )
+  
+  mod_sis <- icm(param, init, control)
+  plot(mod_sis, main=paste("Begegnungsrate pro infizierte Person: ", as.character(i)))
+}
+
+
+for (i in seq(0.02, 0.1, 0.02)){ #vary Infection probability
+  param <- param.icm(inf.prob=i,
+          act.rate=act.rate,
+          rec.rate=rec.rate,
+          di.rate=I.death_rate,
+          ds.rate=S.death_rate,
+          dr.rate=S.death_rate,
+          a.rate=birth_rate
+          )
+  
+  mod_sis <- icm(param, init, control)
+  plot(mod_sis, main=paste("Infektionswahrscheinlichkeit: ", as.character(i*100), " %"))
+}
 ```
+
+Auch im SIS-Modell flacht die Kurve ab, je niedriger die
+Infektionswahrscheinkeit oder die Begegnungsrate ist. Bei einer
+Begegnungsrate von 2 Personen ist die Steigung der Infektionskurve
+innerhalb der 50-tägigen Simulation nicht wahrnehmbar.
 
 ### b) Im Verlauf der Pandemie gab es zahlreiche verschiedene Virus-Varianten. Was bedeuten diese Varianten für die Modellierung? Wie könnte man ein Modell mit verschiedenen Varianten umsetzen und welche Probleme können sich dabei ergeben?
 
