@@ -1,0 +1,201 @@
+---
+title: "Shrinkage"
+author: "Jonas Wortmann"
+date: "2023-07-03"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Shrinkage Methoden
+
+### Ridge Regression
+
+Ridge Regression wird genutzt, wenn Multikollinearität in den Daten existiert. Ridge Regression minimiert:
+
+**die Summe der quadrierten Residuen + λ \* Summe der quadrierten Koeffizienten**
+
+Der zweite Term nennt sich shrinkage penalty. Lambda bestimmt die Regularisierung der Koeffizienten. Je höher λ gewählt wird, desto mehr schrumpfen die Koeffizienten der Ridge Regression.
+
+```{r}
+set.seed(1)
+load("data/prostate.rdata")
+library(glmnet)
+library(ggplot2)
+
+# lineare Regression
+lm_model <- lm(lpsa~lcavol+lweight+age+lbph+svi+lcp+gleason+pgg45, data=prostate)
+lm_coef <- coef(lm_model)
+
+#ridge Regression
+y <- prostate$lpsa
+x <- data.matrix(prostate[,c('lcavol','lweight','age','lbph','svi','lcp','gleason','pgg45')])
+rr_model_lambda_0 <- glmnet(x,y,alpha=0,lambda=0) # alpha=0 => Ridge Regression
+rr_model_lambda_10 <- glmnet(x,y,alpha=0,lambda=10)
+result <- data.frame(Lineare.Regression=lm_model$coefficients,
+                     Ridge.Regression.lambda0=as.vector(coef(rr_model_lambda_0)),
+                     Ridge.Regression.lambda10=as.vector(coef(rr_model_lambda_10)))
+
+print(result)
+```
+
+Die Koeffienzen des linearen Regressionsmodells sind bis auf den Intercept identisch zum Ridge Regressionmodell mit lambda=0, weil der Strafterm der Ridge Regression entfällt und deshalb wie eine lineare Regression funktionieren. Das der Intercept ungleich ist, liegt vermutlich daran, dass die Funktion *glmnet* anders implementiert wurde als *lm*. Die Koeffizienten des Ridge Regression-Modells mit lambda=10 schrumpfen, sodass sie weniger Einfluss auf die Zielvariable *lpsa* haben.
+
+```{r}
+rr_model <- glmnet(x,y,alpha=0)
+plot(rr_model, xvar="lambda")
+
+legend("topright", legend = rownames(coef(rr_model_lambda_10)), col = 1:nrow(coef(rr_model_lambda_10)), lty = 1)
+```
+
+#### Cross Validation für λ = 0, λ = 0.09 und λ = 2
+
+```{r}
+lambdas <- c(0, 0.09, 2)
+mse_estimates <- c()
+for(lambda in lambdas){
+  # split into 80:20 dataset
+  # train_test_split <- sample(c(rep(0, length(x)*0.8), rep(1, length(x)*0.2)))
+  train_x <- x[prostate$train==TRUE,]
+  train_y <- y[prostate$train==TRUE]
+  test_x <- x[prostate$train==FALSE,]
+  test_y <- y[prostate$train==FALSE]
+  
+  rr_model <- glmnet(train_x,train_y,alpha=0, lambda=lambda)
+  estimates <- predict(rr_model,test_x)
+  mse <- sum((test_y-estimates)**2)
+  mse_estimates <- c(mse_estimates, mse)
+}
+# plot MSEs
+ggplot(data.frame(MSE=round(mse_estimates, 4)), aes(x = as.character(lambdas), y = MSE)) +
+  geom_bar(stat = "identity") +
+  xlab("λ") +
+  ylab("MSE") +
+  ggtitle("Mean Squared Error (MSE)") +
+  geom_text(aes(label=MSE), vjust=-0.5)
+```
+
+Der Test-MSE für λ = 0.09 ist im Vergleich zu den anderen Lambda-Werten am geringsten.
+
+```{r}
+#perform k-fold cross-validation to find optimal lambda value
+cv_model <- cv.glmnet(x, y, alpha = 0)
+
+#find optimal lambda value that minimizes test MSE
+best_lambda <- cv_model$lambda.min
+best_lambda
+#produce plot of test MSE by lambda value
+plot(cv_model) 
+```
+
+Das optimale λ liegt bei 0.08.
+
+```{r}
+rr_model_best_lambda <- glmnet(train_x, train_y, alpha = 0, lambda=best_lambda)
+estimates <- predict(rr_model_best_lambda, test_x)
+mse <- sum((test_y-estimates)**2)
+mse_estimates <- c(mse_estimates, mse)
+
+# plot MSEs
+ggplot(data.frame(MSE=round(mse_estimates, 4)), aes(x = as.character(c(lambdas, "0.08")), y = MSE)) +
+  geom_bar(stat = "identity") +
+  xlab("λ") +
+  ylab("MSE") +
+  ggtitle("Mean Squared Error (MSE)") +
+  geom_text(aes(label=MSE), vjust=-0.5)
+```
+
+Nach der k-Fold Cross Validation ist das optimale λ = 0.08. Mit einer einfachen Cross Validation konnte λ = 0.09 einen etwas niedrigeren MSE erhalten. Das optimale λ der k-Fold Cross Validation ist jedoch ein besserer Schätzer, da er ein stabileren MSE schätzt.
+
+#### Vergleich der Koeffizenten
+
+```{r}
+data.frame(Koeffizienten.LineareRegression=coef(lm_model),Koeffizienten.best_lambda=as.vector(coef(rr_model_best_lambda)))
+```
+
+Die Koeffizienten *lcavol*, *lweight*, *age*, *svi*, *gleason*, *pgg45* und der y-Intercept sind geschrumpft, während die Koeffizienten *lbph* und *lcp* gestiegen sind.
+
+### Lasso Verfahren
+
+Das Lasso-Verfahren nutzt im Vergleich zur Ridge Regression einen L1-Penalty-Term zur Regularisierung. Der L1-Penalty-Term ist proportional zur Summe der absoluten Werte der Koeffizienten. Während die Ridge Regression versucht die Koeffizienten gleichmäßig zu schrumpfen, zielt die Lasso-Methode irrelevante Prädiktoren aus dem Modell anhand eines Koeffizientenwerts von 0 zu eliminieren.
+```{r}
+lasso_model_lambda_0 <- glmnet(x,y,alpha=1,lambda=0) # alpha=1 => Lasso-Verfahren
+lasso_model_lambda_10 <- glmnet(x,y,alpha=1,lambda=10)
+result <- data.frame(Lineare.Regression=lm_model$coefficients,
+                     Ridge.Regression.lambda0=as.vector(coef(rr_model_lambda_0)),
+                     Ridge.Regression.lambda10=as.vector(coef(rr_model_lambda_10)),
+                     Lasso.lambda0=as.vector(coef(lasso_model_lambda_0)),
+                     Lasso.lambda10=as.vector(coef(lasso_model_lambda_10)))
+
+
+print(result)
+```
+Auch hier sind die Koeffizienten bei λ = 0 identisch zur linearen Regression. Wenn λ = 10 werden die Koeffizientenschätzer auf 0 reduziert und es bleibt nur noch der y-Intercept, also eine Senkrechte. Die Zielvariable ist nach diesem Modell unabhängig von den Prädiktoren.
+
+#### Koeffizienten für verschiedene λ-Werte
+```{r}
+lasso_model <- glmnet(x,y,alpha=1, lambda=seq(0,1,0.001))
+plot(lasso_model, xvar="lambda")
+legend("topright", legend = rownames(coef(lasso_model_lambda_0)), col = 1:nrow(coef(lasso_model_lambda_0)), lty = 1)
+```
+Mit steigendem  λ werden die Koeffizientenschätzer nacheinander eliminiert.
+
+#### Cross Validation für λ = 0, λ = 0.002 und λ = 1
+
+```{r}
+lambdas <- c(0, 0.002, 1)
+mse_estimates <- c()
+
+# split into training und test
+train_x <- x[prostate$train==TRUE,]
+train_y <- y[prostate$train==TRUE]
+test_x <- x[prostate$train==FALSE,]
+test_y <- y[prostate$train==FALSE]
+
+for(lambda in lambdas){
+
+  lasso_model <- glmnet(train_x,train_y,alpha=1, lambda=lambda)
+  estimates <- predict(lasso_model,test_x)
+  mse <- sum((test_y-estimates)**2)
+  mse_estimates <- c(mse_estimates, mse)
+}
+# plot MSEs
+ggplot(data.frame(MSE=round(mse_estimates, 4)), aes(x = as.character(lambdas), y = MSE)) +
+  geom_bar(stat = "identity") +
+  xlab("λ") +
+  ylab("MSE") +
+  ggtitle("Mean Squared Error (MSE)") +
+  geom_text(aes(label=MSE), vjust=-0.5)
+```
+
+λ = 0.002 hat den geringsten MSE nach der Cross Validation. λ = 1 hat etwa ein doppelt so großen MSE zu λ = 0 und λ = 0.002.
+
+#### Optimaler Schätzer für λ
+```{r}
+#perform k-fold cross-validation to find optimal lambda value
+cv_model <- cv.glmnet(x, y, alpha = 1)
+
+#find optimal lambda value that minimizes test MSE
+best_lambda <- cv_model$lambda.min
+best_lambda
+#produce plot of test MSE by lambda value
+plot(cv_model) 
+```
+Der optimale λ-Wert ist nach der k-Fold Cross Validation 0.099
+```{r}
+lasso_model_best_lambda <- glmnet(train_x, train_y, alpha = 1, lambda=best_lambda)
+estimates <- predict(lasso_model_best_lambda, test_x)
+mse <- sum((test_y-estimates)**2)
+mse_estimates <- c(mse_estimates, mse)
+
+# plot MSEs
+ggplot(data.frame(MSE=round(mse_estimates, 4)), aes(x = as.character(c(lambdas, as.character(round(best_lambda,3)))), y = MSE)) +
+  geom_bar(stat = "identity") +
+  xlab("λ") +
+  ylab("MSE") +
+  ggtitle("Mean Squared Error (MSE)") +
+  geom_text(aes(label=MSE), vjust=-0.5)
+```
+Der Test-MSE ist mit optimalen λ kleiner als der Test-MSE der λ-Werte aus der einfachen Cross Validation.

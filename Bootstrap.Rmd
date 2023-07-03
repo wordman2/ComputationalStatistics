@@ -1,0 +1,198 @@
+---
+title: "Bootstrap"
+author: "Jonas Wortmann"
+date: "2023-07-02"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Bootstrap
+
+### Überprüfung des Zentralen Grenzwertsatzes
+
+```{r}
+library(ggplot2)
+set.seed(1)
+
+means_sim_50 <- c()
+for(i in 1:50){
+  sim_data <- runif(500)
+  means_sim_50 <- c(means_sim_50, mean(sim_data))
+}
+
+means_sim_1000 <- c()
+for(i in 1:1000){
+  sim_data <- runif(500)
+  means_sim_1000 <- c(means_sim_1000, mean(sim_data))
+}
+
+sim_500 <- runif(500)
+num_replicates <- 50
+means_boots_50 <- numeric(num_replicates)
+
+# bootstrap
+for(i in 1:num_replicates){
+  bootstrap_sample <- sample(sim_500, replace=TRUE)
+  means_boots_50[i] <- mean(bootstrap_sample)
+}
+
+num_replicates <- 1000
+means_boots_1000 <- numeric(num_replicates)
+for(i in 1:num_replicates){
+  bootstrap_sample <- sample(sim_500, replace=TRUE)
+  means_boots_1000[i] <- mean(bootstrap_sample)
+}
+
+
+ggplot() +
+  geom_histogram(data=data.frame(means=means_sim_50),aes(x=means,fill="Means Sim"), alpha=0.5) +
+  geom_histogram(data=data.frame(means=means_boots_50),aes(x=means,fill="Means Boots"), alpha=0.5) +
+  geom_vline(xintercept = 0.5, linetype = "dashed") +
+  ggtitle("N=50") 
+
+ggplot() +
+  geom_histogram(data=data.frame(means=means_sim_1000),aes(x=means,fill="Means Sim"), alpha=0.5) +
+  geom_histogram(data=data.frame(means=means_boots_1000),aes(x=means,fill="Means Boots"), alpha=0.5) +
+  geom_vline(xintercept = 0.5, linetype = "dashed") +
+  ggtitle("N=1000")
+
+ggplot() +
+  geom_boxplot(data=data.frame(means=means_sim_1000),aes(x=0,y=means,fill="Means Sim"),) +
+  geom_boxplot(data=data.frame(means=means_boots_1000),aes(x=1,y=means,fill="Means Boots")) +
+  ggtitle("N=1000")
+
+ggplot() +
+  geom_boxplot(data=data.frame(means=means_sim_50),aes(x=0,y=means,fill="Means Sim"),) +
+  geom_boxplot(data=data.frame(means=means_boots_50),aes(x=1,y=means,fill="Means Boots")) +
+  ggtitle("N=50")
+  
+  
+```
+Die Bootstrap Methode ist nicht so präzise, wie die Simulationen. Der Mittelwert des gleichverteilten Datensatzes, der für das Bootstrapping genutzt wurde liegt bei 0.5169. Das 0.25-Quantil der Bootstrap-Verteilung ist bei etwa 0.51. Damit ist die Verteilung der Bootstrap Mittelwerte deutlich höher, als die der simulierten Mittelwerte.
+
+#### Test auf Normalverteilung
+```{r}
+print("N = 50")
+shapiro.test(means_sim_50)
+shapiro.test(means_boots_50)
+
+print("N = 1000")
+shapiro.test(means_sim_1000)
+shapiro.test(means_boots_1000)
+```
+Da der p-Wert > 0.05 ist, sind die Mittelwerte normalverteilt. Das Ergebnis wird durch den zentralen Grenzwertsatz begründet.
+
+#### t-Test der Mittelwerte
+```{r}
+print("N = 50")
+t.test(means_sim_50, means_boots_50)
+
+print("N = 1000")
+t.test(means_sim_1000, means_boots_1000)
+```
+Nach den t-Tests gibt es einen signifikanten Unterschied zwischen den Mittelwerten der Simulationen und der Mittelwerte des Bootstrapping. Die Bootstrap-Methode basiert auf der Annahme, dass die Stichprobe (der Datensatz vom Umfang 500) eine gute Schätzung für die zugrundeliegende Gleichverteilung ist. Wie an den bereits generierten Plots zu sehen ist, ist die Stichprobe größtenteils über dem erwarteten Wert 0.5 und daher gleichen die Mittelwerte der Bootstrap-Methode nicht den simulierten Mittelwerten.
+
+### Konfidenzintervalle durch Bootstrapping
+```{r}
+load("data/Donald.RData")
+library(boot)
+
+data <- Donald_1
+model <- lm(Trump~Alter+Geschlecht+Minderheit+Fremdenfeindlich+IQ, data=data)
+coef_names <- names(model$coefficients[1:6])
+
+# Anzahl der Replikationen für den Bootstrap
+n_bootstrap <- c(50, 100, 1000, 10000)
+
+bootstrap_coef <- function(formula, data, indices){
+  d <- data[indices,]
+  fit <- lm(formula, data=d)
+  return(coef(fit))
+}
+
+
+result <- list()
+for(ni in n_bootstrap){
+  reps <- boot(data=data, statistic=bootstrap_coef, R=ni, formula=model$call$formula)
+  result[[ni]] <- reps
+}
+
+for(i in seq_along(coef_names)){
+  histogram <- ggplot() +
+    geom_density(data=data.frame(w=result[[50]]$t[,i]), mapping=aes(x=w, y=..density..,fill="N=50"), alpha=0.3) +
+    geom_density(data=data.frame(w=result[[100]]$t[,i]), mapping=aes(x=w, y=..density.., fill="N=100"), alpha=0.3) +
+    geom_density(data=data.frame(w=result[[1000]]$t[,i]), mapping=aes(x=w, y=..density.., fill="N=1000"), alpha=0.3) +
+    geom_density(data=data.frame(w=result[[10000]]$t[,i]), mapping=aes(x=w, y=..density.., fill="N=10000"), alpha=0.3) +
+    ggtitle(coef_names[i])
+  
+  print(histogram)
+  for(ni in n_bootstrap){
+  qq_plot <- ggplot(data=data.frame(w=result[[ni]]$t[,i]), mapping=aes(sample=w))+
+    stat_qq() +
+    stat_qq_line() +
+    ggtitle(paste(coef_names[i], ", N = ", as.character(ni) )) 
+  
+  print(qq_plot)
+  }
+  
+  
+}
+```
+
+Je größer N gewählt wird, desto näher sind die Koeffizienten-Schätzer normalverteilt.
+```{r}
+
+col_names <- c("n", "LL","UL", "Error_LL", "Error_UL")
+
+ci_lm <- confint(model)
+
+for(i in seq_along(coef_names))
+  {
+    df <- data.frame(matrix(ncol = length(col_names), nrow = 0))
+    
+    for(ni in n_bootstrap){
+  
+      boot_ci <- boot.ci(result[[ni]], type="basic", index=i)
+      ci <- tail(as.vector(boot_ci$basic), 2)
+      df <- rbind(df,c(ni,ci, ci-ci_lm[i,]))
+    }
+    colnames(df) <- col_names
+    print(df)
+  }
+
+```
+
+Je höher die Anzahl der Replikationen ist, desto stabiler ist in der Regel die Schätzung für das Konfidenzintervall. 
+
+```{r}
+
+n <- 1000
+options <- c("basic", "bca", "perc")
+col_names <- c("n", "LL","UL", "Error_LL", "Error_UL", "options")
+
+for(i in seq_along(coef_names))
+  {
+    df <- data.frame(matrix(ncol = length(col_names), nrow = 0))
+    
+    for(x in options){
+  
+      boot_ci <- boot.ci(result[[n]], type=x, index=i)
+      if(x == "basic") {ci <- tail(as.vector(boot_ci$basic), 2)}
+      else{
+      if(x == "bca") ci <- tail(as.vector(boot_ci$bca), 2)
+      else ci <- tail(as.vector(boot_ci$perc), 2)
+      }
+      
+      df <- rbind(df,c(ni,ci, ci-ci_lm[i,], x))
+    }
+    colnames(df) <- col_names
+    print(df)
+  }
+
+```
+
+[Interpretation]
+
