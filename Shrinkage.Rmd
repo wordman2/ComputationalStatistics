@@ -56,8 +56,6 @@ legend("topright", legend = rownames(coef(rr_model_lambda_10)), col = 1:nrow(coe
 lambdas <- c(0, 0.09, 2)
 mse_estimates <- c()
 for(lambda in lambdas){
-  # split into 80:20 dataset
-  # train_test_split <- sample(c(rep(0, length(x)*0.8), rep(1, length(x)*0.2)))
   train_x <- x[prostate$train==TRUE,]
   train_y <- y[prostate$train==TRUE]
   test_x <- x[prostate$train==FALSE,]

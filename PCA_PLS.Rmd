@@ -1,0 +1,148 @@
+---
+title: "PCA/PLS Regression"
+author: "Jonas Wortmann"
+date: "2023-07-06"
+output: html_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## PCA/PLS Regression
+
+Beschreibung der Variablen •
+
+-   lcavol: Tumorvolumen (logarithmiert)
+
+-   lweight: Tumorgewicht (logarithmiert)
+
+-   age: Alter des Patienten
+
+-   lbph: Anzahl der benignen Hyperplasien in der Prostata- das sind
+    gutartige Veränderungen (logarithmiert)
+
+-   gleason: Gleason score - das ist ein Maß dafür, wie stark die Zellen
+    der Prostata bereits verändert sind
+
+-   pgg45: Anteil des Tumors mit Gleason score 4 oder 5 (in Prozent)
+
+-   lpc: Anteil der Organkapsel, der bereits von Tumorzellen infiltriert
+    ist (in Prozent)
+
+-   svi: Sind die Samenbläschen bereits infiltriert? (ja/nein)
+
+-   lpsa PSA Wert - abhängige Variable (logarithmiert)
+
+### Korrelationsmatrix
+
+```{r}
+load("data/prostate.rdata")
+library(dplyr)
+
+cor(select(prostate, -c(train,lpsa)))
+```
+
+*lcavol* und *lcp* korrelieren zu 0.67. Werden Organkapsel von
+Tumorzellen infiltriert, steigt das Tumorvolumen. *gleason* und *pgg45*
+korrelieren stark mit 0.75. Beide Variablen sind vom Gleason-Score
+abhängig und korrelieren von daher. Auch *lcp* und *pgg45* korrelieren
+miteinander. Steigt der Anteil an Organkapseln, die von Tumorzellen
+infiltriert ist, dann ist auch ein größerer Anteil des Tumors im Gleason
+Score 4 oder 5.
+
+### PCA Regression
+
+```{r}
+set.seed(1)
+library(pls)
+library(ggplot2)
+
+pca_regression <- pcr(lpsa~lcavol+lweight+age+lbph+svi+lcp+gleason+pgg45, data=prostate,scale=TRUE, validation="CV") 
+# uses k=10 folds by default
+
+summary(pca_regression)
+rmsep <- RMSEP(pca_regression)
+rmsep_values <- rmsep[["val"]][seq(1,17,2)]
+ggplot(mapping=aes(x=0:8, y=rmsep_values)) +
+  geom_line() +
+  labs(title="Fehler in Abhängigkeit der Anzahl der Hauptkomponenten", y="RMSE", x="Anzahl Hauptkomponenten")
+```
+
+Der geringste Fehler tritt mit allen 8 Komponenten auf. Allerdings sinkt
+der Fehler ab 3 Hauptkomponenten nur noch gering und steigt sogar bei 5
+Hauptkomponenten an. Darum werden 3 Hauptkomponenten als optimale Anzahl
+im folgenden Modell gewählt.
+
+#### PCA Regression mit optimaler Hauptkomponentenanzahl
+
+```{r}
+num_comp <- 3
+train <- subset(prostate, train==TRUE)
+test <- subset(prostate, train==FALSE)
+
+pca_regression <- pcr(lpsa~lcavol+lweight+age+lbph+svi+lcp+gleason+pgg45, data=train,scale=TRUE)
+y_predict <- predict(pca_regression, test, ncomp=num_comp,)
+mse_optimal_lambda_rr <- 14.8474
+mse_optimal_lambda_lasso <- 13.5806
+mse_pca <- sum((test$lpsa - y_predict)**2)
+mse_pca <- round(mse_pca, 4)
+mses <- c(mse_pca, mse_optimal_lambda_rr, mse_optimal_lambda_lasso)
+ggplot(mapping=aes(x=c("PCA", "Ridge", "Lasso"), y=c(mses))) +
+  geom_bar(stat = "identity") +
+  labs(title="MSEs der Regressionsmethoden" ,y="MSE", x="") +
+  geom_text(aes(label=mses), vjust=-0.5)
+```
+
+Die Lasso-Methode erzielt im vorgegebenen Trainings-/Testdatensatz den
+geringsten quadratischen Fehler. Die Varianz der MSEs ist nicht hoch,
+das bedeutet, dass die Methoden sehr ähnliche Ergebnisse liefern
+hinsichtlich ihrer Präzision.
+
+### PLS Regression
+
+Die PLS-Regression funktioniert ähnlich wie die PCA-Regression. Die
+Variablen (x1,..., xp) werden bei der PLS-Regression vor der
+Hauptkomponentenanalyse anhand ihrer Korrelationen zur Zielgröße
+gewichtet werden. Dafür werden p lineare Regressionen durchgeführt.
+
+```{r}
+set.seed(1)
+pls_regression <- plsr(lpsa~lcavol+lweight+age+lbph+svi+lcp+gleason+pgg45, data=prostate,scale=TRUE, validation="CV") 
+summary(pls_regression)
+rmsep <- RMSEP(pls_regression)
+rmsep_values <- rmsep[["val"]][seq(1,17,2)]
+min_fehler <- which(rmsep_values == min(rmsep_values)) -1  # - 1 weil index startet bei 1, Komponenten bei 0
+print(paste("kleinster Fehler: ", min_fehler))
+ggplot(mapping=aes(x=0:8, y=rmsep_values)) +
+  geom_line() +
+  labs(title="Fehler in Abhängigkeit der Anzahl der Hauptkomponenten", y="RMSE", x="Anzahl Hauptkomponenten")
+```
+
+Der kleinste Fehler ist wieder bei 8 Komponenten. Der Fehler sinkt nach
+3 Hauptkomponenten nicht mehr erheblich, darum wird er als Optimum
+gewählt.
+
+#### PLS-Regression mit optimaler Hauptkomponentenanzahl
+
+```{r}
+num_comp <- 3
+
+pls_regression <- plsr(lpsa~lcavol+lweight+age+lbph+svi+lcp+gleason+pgg45, data=train,scale=TRUE)
+y_predict <- predict(pls_regression, test, ncomp=num_comp,)
+mse_pls <- sum((test$lpsa - y_predict)**2)
+mse_pls <- round(mse_pls, 4)
+mses <- c(mse_pca, mse_pls, mse_optimal_lambda_rr, mse_optimal_lambda_lasso)
+ggplot(mapping=aes(x=c("PCA", "PLS", "Ridge", "Lasso"), y=c(mses))) +
+  geom_bar(stat = "identity") +
+  labs(title="MSEs der Regressionsmethoden" ,y="MSE", x="") +
+  geom_text(aes(label=mses), vjust=-0.5)
+
+```
+
+Der Fehler der PLS-Regression ist am geringsten, das bedeutet die PLS
+Regression kann anhand des vorgegebenen Trainingsdatensatzes die
+Testdaten am besten vorhersagen.

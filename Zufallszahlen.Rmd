@@ -1,0 +1,160 @@
+---
+title: "Zufallszahlen"
+author: "Jonas Wortmann"
+date: "2023-07-04"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Erzeugen von Zufallszahlen
+
+### Poisson- und Exponentialverteilung
+
+```{r}
+library(ggplot2)
+
+set.seed(1)
+n <- 10000
+uniform_random <- runif(n)
+lambda = 3
+
+poisson_random_inversion <- qpois(uniform_random, lambda) # Gibt den Wert der inversen Poisson-Funktion für die kumulative Dichte zurück. Q(p) = F^-1(p)
+
+poisson_random_r <- rpois(n, lambda = 3) # random generated poisson-distributed numbers in R
+
+ggplot()+
+  geom_histogram(aes(poisson_random_inversion, fill="inverse Poisson-Funktion"), alpha=0.5) +
+  geom_histogram(aes(poisson_random_r, fill="R generierte Poisson-Verteilung"), alpha=0.5) +
+  labs(title = "Poisson Distribution") +
+  theme_minimal()
+
+
+ggplot() +
+  geom_qq(aes(sample = poisson_random_inversion, color="inverse Poisson-Funktion"), alpha=0.5) +
+  geom_qq(aes(sample = poisson_random_r, color = "R generierte Poisson-Verteilung"), ,alpha=0.5) +
+  labs(title = "QQ-Plot - Poisson Distribution",
+       x = "Theoretical Quantiles",
+       y = "Sample Quantiles") +
+  theme_minimal() +
+  labs(color=c("Gleichverteilt","R zufallsgeneriert"))
+```
+
+```{r}
+# doing the same with the exponential distribution
+exponential_random_inversion <- (-1/lambda) * log(1 - uniform_random)
+exponential_random_r <- rexp(n, rate = lambda)
+
+ggplot()+
+  geom_histogram(aes(exponential_random_inversion, fill="blue"), alpha=0.5) +
+  geom_histogram(aes(exponential_random_r, fill="red"), alpha=0.5) +
+  labs(title = "Exponential Distribution") +
+  theme_minimal()
+
+
+ggplot() +
+  geom_qq(aes(sample = exponential_random_inversion), color = "blue") +
+  geom_qq(aes(sample = exponential_random_r), color = "red") +
+  labs(title = "QQ-Plot - Exponential Distribution",
+       x = "Theoretical Quantiles",
+       y = "Sample Quantiles") +
+  theme_minimal()
+
+```
+
+Die Plots zeigen, dass es sich bei den transformierten gleichverteilten Zufallszahlen, um die gleiche Verteilung wie die der in R zufallsgenerierten Verteilungen handelt.
+
+### Normalverteilung
+
+```{r}
+n <- 10000
+u <- runif(n)
+v <- runif(n)
+z <- cos(2*pi*u)*sqrt(-2*log(v)) # Transformation gleichverteilt -> normalverteilt
+normal_random_r <- rnorm(n)
+
+ggplot()+
+  geom_histogram(aes(z, fill="blue"), alpha=0.5) +
+  geom_histogram(aes(normal_random_r, fill="red"), alpha=0.5) +
+  labs(title = "Normal Distribution") +
+  theme_minimal()
+
+ggplot() +
+  geom_qq(aes(sample = z), color = "blue") +
+  geom_qq(aes(sample = normal_random_r), color = "red") +
+  labs(title = "QQ-Plot - Normal Distribution",
+       x = "Theoretical Quantiles",
+       y = "Sample Quantiles") +
+  theme_minimal()
+```
+
+Die Verteilung der transformierten Zufallszahlen liegen auf den von R generierten normalverteilten Zufallszahlen.
+
+### Gleichverteilung
+
+```{r}
+# Random.org erzeugte Zufallszahlen
+file_path <- "data/random_org.txt"
+uniform_random_org <- scan(file_path, sep="\n")
+tupel_uniform_random_org <- embed(uniform_random_org, 2)
+plot(tupel_uniform_random_org, main="Random Decimal Fraction Generator")
+hist(uniform_random_org, main="Random Decimal Fraction Generator")
+
+# Mittelquadratverfahren von Neumann
+seed <- sample(10000000:99999999, 1) # beliebige 8-stellige Zahl
+n <- 10000
+k <- 8
+uniform_random_neumann <- c()
+xn <- seed^2
+for(i in 1:n){
+  xn_string <- as.character(xn)
+  middle_digits <- substr(xn_string, start=(nchar(xn_string)/2 - (k/2-1)), stop=(nchar(xn_string)/2 +k/2)) #get the 8 middle digits of the squared xn
+  xn <- as.integer(middle_digits)
+  uniform_random_neumann <- c(uniform_random_neumann, xn)
+  if(xn == 0){
+    print("xn = 0")
+    break
+  }
+  xn <- xn^2
+}
+
+tupel_uniform_random_neumann <- embed(uniform_random_neumann, 2)
+
+plot(tupel_uniform_random_neumann, main="Mittelquadratverfahren von Neumann")
+hist(uniform_random_neumann, main="Mittelquadratverfahren von Neumann")
+# eigenes Verfahren
+a <- sample(100^2:100^3, 3) # Startwerte initialisieren
+z <- (a[1]*1+a[2]*2+a[3]*3) # z berechnen aus Startwerten
+k <- 6 # Anzahl an Digits, die in die Gleichverteilung kommen
+
+uniform_own <- c()
+for(i in 1:n)
+{
+  # weise die letzten k Digits dem neuen z-Wert zu
+  z_string <- as.character(z)
+  last_k_digits <- substr(z_string, start=(nchar(z_string)+1-k), stop=(nchar(z_string)))
+  z <- as.integer(last_k_digits)
+  uniform_own <- c(uniform_own,z)
+  a <- c(a[2], a[3], z) # aktualisiere Vektor a: z an dritter Position. Entferne a1
+  z <- (a[1]*1+a[2]*2+a[3]*3) # aktualisiere z anhand des a Vektors
+}
+hist(uniform_own, main="The Last Chaos Digits")
+plot(embed(uniform_own, 2), main="The Last Chaos Digits")
+
+# Mersenne twister
+random_mersenne_twister <- runif(n)
+tupel_random_mersenne_twister <- embed(random_mersenne_twister,2)
+plot(tupel_random_mersenne_twister, main="Mersenne Twister")
+hist(random_mersenne_twister, main="Mersenne Twister")
+
+# 
+RNGkind("Super-Duper")
+random_Super_Duper <- runif(n)
+tupel_random_Super_Duper <- embed(random_Super_Duper,2)
+plot(tupel_random_Super_Duper, main="Super-Duper")
+hist(random_Super_Duper, main="Super-Duper")
+```
+
+Das Ergebnis ist deutlich: The Last Chaos Digits schneidet mit Abstand am besten ab.
