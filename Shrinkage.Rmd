@@ -5,12 +5,6 @@ date: "2023-07-03"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
-## Shrinkage Methoden
-
 ### Ridge Regression
 
 Ridge Regression wird genutzt, wenn Multikollinearität in den Daten existiert. Ridge Regression minimiert:
@@ -19,7 +13,7 @@ Ridge Regression wird genutzt, wenn Multikollinearität in den Daten existiert. 
 
 Der zweite Term nennt sich shrinkage penalty. Lambda bestimmt die Regularisierung der Koeffizienten. Je höher λ gewählt wird, desto mehr schrumpfen die Koeffizienten der Ridge Regression.
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 set.seed(1)
 load("data/prostate.rdata")
 library(glmnet)
@@ -91,6 +85,7 @@ plot(cv_model)
 Das optimale λ liegt bei 0.08.
 
 ```{r}
+set.seed(1)
 rr_model_best_lambda <- glmnet(train_x, train_y, alpha = 0, lambda=best_lambda)
 estimates <- predict(rr_model_best_lambda, test_x)
 mse <- sum((test_y-estimates)**2)
@@ -168,7 +163,7 @@ ggplot(data.frame(MSE=round(mse_estimates, 4)), aes(x = as.character(lambdas), y
   geom_text(aes(label=MSE), vjust=-0.5)
 ```
 
-λ = 0.002 hat den geringsten MSE nach der Cross Validation. λ = 1 hat etwa ein doppelt so großen MSE zu λ = 0 und λ = 0.002.
+λ = 0.002 hat den geringsten MSE nach der Cross Validation. λ = 1 hat etwa ein doppelt so hohen MSE zu λ = 0 und λ = 0.002.
 
 #### Optimaler Schätzer für λ
 ```{r}

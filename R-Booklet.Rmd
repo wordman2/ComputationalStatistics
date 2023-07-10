@@ -1,0 +1,53 @@
+---
+title: "Computational Statistics"
+author: "Jonas Wortmann"
+date: "2023-07-06"
+output: 
+  html_document:
+    toc: true
+    toc_float:
+      toc_collapsed: true
+    message: false
+    warning: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+set.seed(1)
+```
+
+# Projekt Corona
+
+```{r child ='Projekt_Corona.Rmd'}
+
+```
+
+# Cross Validation
+
+```{r child ='Cross_Val.Rmd'}
+```
+
+# Monte Carlo Integration
+
+```{r child ='Monte_Carlo.Rmd'}
+```
+
+# Bootstrap
+
+```{r child='Bootstrap.Rmd'}
+```
+
+# Shrinkage
+
+```{r child ='Shrinkage.Rmd'}
+```
+
+# PCA/PLS Regression
+
+```{r child ='PCA_PLS.Rmd'}
+```
+
+# Zufallszahlen
+
+```{r child ='Zufallszahlen.Rmd'}
+```

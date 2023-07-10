@@ -8,13 +8,7 @@ editor_options:
     wrap: 72
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
-## PCA/PLS Regression
-
-Beschreibung der Variablen •
+Beschreibung der Variablen:
 
 -   lcavol: Tumorvolumen (logarithmiert)
 
@@ -39,7 +33,7 @@ Beschreibung der Variablen •
 
 ### Korrelationsmatrix
 
-```{r}
+```{r, warning=FALSE}
 load("data/prostate.rdata")
 library(dplyr)
 
@@ -55,6 +49,10 @@ infiltriert ist, dann ist auch ein größerer Anteil des Tumors im Gleason
 Score 4 oder 5.
 
 ### PCA Regression
+
+In der PCA werden die Variablen von einen p-dimensionalen Raum in einen
+r-dimensionalen Raum transformiert, wobei r \< p gilt und damit die
+Dimension reduziert werden.
 
 ```{r}
 set.seed(1)
@@ -100,7 +98,7 @@ ggplot(mapping=aes(x=c("PCA", "Ridge", "Lasso"), y=c(mses))) +
 Die Lasso-Methode erzielt im vorgegebenen Trainings-/Testdatensatz den
 geringsten quadratischen Fehler. Die Varianz der MSEs ist nicht hoch,
 das bedeutet, dass die Methoden sehr ähnliche Ergebnisse liefern
-hinsichtlich ihrer Präzision.
+hinsichtlich ihrer Präzision in diesem Beispiel.
 
 ### PLS Regression
 
