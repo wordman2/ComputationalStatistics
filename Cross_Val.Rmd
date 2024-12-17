@@ -2,14 +2,10 @@
 title: "Cross_Validation"
 author: "Jonas Wortmann"
 date: "2023-04-24"
-output: html_document
+output: 
+  html_document:
+    toc: true
 ---
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
-## Cross Validation
 
 ### Lineare Regression
 
@@ -25,9 +21,9 @@ summary(model)
 
 Je älter desto höher ist die Zustimmung für Trump. Männliche Wahlberechtigte stimmen eher für Trump. Personen, die keiner Minderheit angehören stimmen eher für Trump als Personen, die einer Minderheit angehören. Fremdenfeindliche Wähler stimmen eher für Trump als nicht-fremdenfeindliche. Je niedriger der IQ, desto höher ist die Zustimmung für Trump.
 
-### A1 Split in Test- und Trainingsdaten und Vergleich der Verteilungen der Variablen
+### Split in Test- und Trainingsdaten und Vergleich der Verteilungen der Variablen
 
-```{r}
+```{r, warning=FALSE, message=FALSE, echo = FALSE}
 require(ggplot2)
 require(gridExtra)
 
@@ -42,7 +38,7 @@ for (i in 1:3){
   test <- Donald_1[train_test_split == 1,]
   test$group <- "TEST"
 
-  plot_alter <- ggplot() + 
+  plot_alter <- ggplot() +
     geom_boxplot(data=train, mapping=aes(x=group, y=Alter, fill=group, col=group),  alpha=0.5) +
     geom_boxplot(data=test, mapping=aes(x=group, y=Alter, fill=group, col=group), alpha=0.5) +
     guides(fill=FALSE, color=FALSE)
@@ -54,15 +50,19 @@ for (i in 1:3){
              ) +
     geom_bar(data=test, 
              mapping=aes(x=Geschlecht, y=..count../sum(..count..), fill=group, col=group), 
-             alpha=0.5) +
-    guides(fill=FALSE, color=FALSE)
-  
+             alpha=0.5)
+
   plot_minderheit <- ggplot() +
     geom_bar(data=train, mapping=aes(x=Minderheit, y=..count../sum(..count..), fill=group, col=group), alpha=0.5) +
     geom_bar(data=test, mapping=aes(x=Minderheit, y=..count../sum(..count..), fill=group, col=group), alpha=0.5)
     
-  if(i == 3) plot_minderheit <- plot_minderheit + guides(fill=guide_legend(), color=guide_legend())
-  else plot_minderheit <- plot_minderheit + guides(fill=FALSE, color=FALSE)
+  if(i == 3) {
+    plot_minderheit <- plot_minderheit + guides(fill=guide_legend(), color=guide_legend())
+    plot_geschlecht <- plot_geschlecht + guides(fill=guide_legend(), color=guide_legend())
+  }else {
+    plot_minderheit <- plot_minderheit + guides(fill=FALSE, color=FALSE)
+    plot_geschlecht <- plot_geschlecht + guides(fill=FALSE, color=FALSE)
+    }
   
   plot_fremdenfeindlich <- ggplot() +
     geom_boxplot(data=train, mapping=aes(x=group, y=Fremdenfeindlich, fill=group, col=group), alpha=0.5) +
@@ -88,14 +88,30 @@ for (i in 1:3){
   
 }
 y_labs <- c("Alter", "%", "%", "Fremdenfeindlichkeit", "IQ", "Trump Zustimmung (%)")
-num_plots <- 6
+num_plots <- length(y_labs)
 
-# plot distributions
-for (i in 1:num_plots) {grid.arrange(plots[[i]] + ggtitle("Split #1") + ylab(y_labs[i]),
+create_grid_plot <- function(variable, choices) {
+  i <- which(variable == choices) 
+  return(grid.arrange(plots[[i]] + ggtitle("Split #1") + ylab(y_labs[i]),
                                      plots[[i+num_plots]] + ylab("") + ggtitle("Split #2"),
-                                     plots[[i+num_plots*2]] + ylab("") + ggtitle("Split #3"), 
-                                     nrow=1)}
+                                     plots[[i+num_plots*2]] + ylab("") + ggtitle("Split #3"),
+                                     nrow=1))}
 
+choices <- c("Alter", "Geschlecht", "Minderheit", "Fremdenfeindlichkeit", "IQ", "Trump_Zustimmung")
+
+```
+```{r}
+selectInput("data", "Select a variable", choices)
+```
+
+```{r echo=FALSE}
+renderPlot({
+  create_grid_plot(input$data, choices)
+})
+
+```
+
+```{r}
 # plot MSEs
 ggplot(data.frame(MSE=mses), aes(x = c("Split #1", "Split #2", "Split #3"), y = MSE)) +
   geom_bar(stat = "identity") +
@@ -104,9 +120,15 @@ ggplot(data.frame(MSE=mses), aes(x = c("Split #1", "Split #2", "Split #3"), y = 
   ggtitle("Mean Squared Error (MSE)")
 ```
 
-Das Alter im ersten Split ist in den Testdaten höher, als in den Trainingsdaten. Im dritten Split sind in den Trainingsdaten weniger Daten von Personen enthalten, die einer Minderheit angehören. Die Verteilung der Trump Zustimmung ist vor allem in zweiten Split besonders unterschiedlich: In den Testdaten befinden sich mehr Trump-Anhänger als in den Trainingsdaten. Die lineare Regressionsmodelle die mit die Trainingsdaten von Split 2 und 3 trainiert wurden, machen präzisere Vorhersagen als das Modell von Split 1.
+Im Alter unterscheiden sich die Splits nicht stark zwischen Trainings- und Testdatensatz. In Split #3 sind etwas ältere Personen im Training als im Test.
+Im Testdatensatz in Split #2 und #3 befinden sich mehr Frauen als im Trainingsdatensatz. In Split #1 befinden sich mehr Frauen im Trainingsdatensatz als Männer.
+Die Verteilung der Minderheiten ist in jedem Split in etwa ähnlich.
+In Split #1 umd #3 befinden sich mehr fremdenfeindlichere Personen im Test- als im Trainingsdatensatz, während in Split #2 der gegenteilige Effekt etwas weniger ausgeprägt ist.
+In Split #3 ist der IQ im Trainingsdatensatz höher als im Test. Bei den anderen Splits sind sie in etwa identisch.
+In allen Splits befinden sich im Testdatensatz systematisch mehr Trump Anhänger als im Trainingsdatensatz, in #3 ist der Effekt am deutlichsten.
+Nach den MSEs zu urteilen, sind die lineare Regressionsmodelle die mit die Trainingsdaten von Split #1 und #3 trainiert wurden, machen präzisere Vorhersagen als das Modell von Split #2. Eine Ursache könnte die Variable Fremdenfeindlichkeit sein.
 
-### A 2 Leave-One-Out Cross Validation
+### Leave-One-Out Cross Validation
 
 ```{r}
 
@@ -129,7 +151,7 @@ ggplot(data.frame(MSE=mses), aes(x = c("Split #1", "Split #2", "Split #3", "LOO-
   geom_text(aes(label=MSE), vjust=-0.5)
 ```
 
-Der MSE von Split 2 und 3 ist geringer als der von der LOO-CV. Der MSE von Split 2 und 3 hängt stark von den Samples im Training- und Testdatensatz ab. Ist der Split günstig, d. h. lässt sich der Testdatensatz durch den Trainingsdatensatz gut vorhersagen, führt das zu einem geringen MSE. Aber nur weil der Testdatensatz des Splits gut vorhersagbar ist, heißt das nicht, dass es auf weitere ungesehene Daten zutrifft. Die LOO-Methode passt das Modell an allen Daten an und das Ergebnis ist darum konstant.
+Der MSE von Split #1 und #3 ist geringer als der von der LOO-CV. Der MSE von allen CV-Splits hängt stark von den Samples im Training- und Testdatensatz ab. Ist der Split günstig, d. h. lässt sich der Testdatensatz durch den Trainingsdatensatz gut vorhersagen, führt das zu einem geringen MSE. Aber nur weil der Testdatensatz des Splits gut vorhersagbar ist, heißt das nicht, dass es auf weitere ungesehene Daten zutrifft. Die LOO-Methode passt das Modell an allen Daten an, darum ist das Ergebnis konstant.
 
 ```{r}
 # Leave one Out mit der glm Funktion
@@ -168,4 +190,5 @@ ggplot(data.frame(MSE=mses), aes(x = c("Split #1", "Split #2", "Split #3", "LOO-
   ggtitle("Mean Squared Error (MSE)") +
   geom_text(aes(label=MSE), vjust=-0.5)
 ```
-Die MSEs der k-fachen Cross Validierung zeigt mit k=5 und k=10 keine großen Differenzen auf. Auch zur LOO-CV ist keine großer Unterschied zu sehen. 
+
+Die MSEs der k-fachen Cross Validierung zeigt mit k=5 und k=10 keine großen Differenzen auf. Auch zur LOO-CV ist keine großer Unterschied zu sehen.

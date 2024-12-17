@@ -5,15 +5,9 @@ date: "2023-07-04"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
-## Erzeugen von Zufallszahlen
-
 ### Poisson- und Exponentialverteilung
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 library(ggplot2)
 
 set.seed(1)
@@ -23,7 +17,7 @@ lambda = 3
 
 poisson_random_inversion <- qpois(uniform_random, lambda) # Gibt den Wert der inversen Poisson-Funktion für die kumulative Dichte zurück. Q(p) = F^-1(p)
 
-poisson_random_r <- rpois(n, lambda = 3) # random generated poisson-distributed numbers in R
+poisson_random_r <- rpois(n, lambda = lambda) # random generated poisson-distributed numbers in R
 
 ggplot()+
   geom_histogram(aes(poisson_random_inversion, fill="inverse Poisson-Funktion"), alpha=0.5) +
@@ -33,42 +27,41 @@ ggplot()+
 
 
 ggplot() +
-  geom_qq(aes(sample = poisson_random_inversion, color="inverse Poisson-Funktion"), alpha=0.5) +
-  geom_qq(aes(sample = poisson_random_r, color = "R generierte Poisson-Verteilung"), ,alpha=0.5) +
+  stat_qq(aes(sample = poisson_random_inversion, color="inverse Poisson-Funktion"), distribution=qpois, alpha=0.5, dparams = list(lambda = lambda)) +
+  stat_qq(aes(sample = poisson_random_r, color = "R generierte Poisson-Verteilung"), distribution=qpois, alpha=0.5, dparams = list(lambda = lambda)) +
+    stat_qq_line(aes(sample = poisson_random_r),distribution=qpois, dparams = list(lambda = lambda))+
   labs(title = "QQ-Plot - Poisson Distribution",
        x = "Theoretical Quantiles",
        y = "Sample Quantiles") +
   theme_minimal() +
-  labs(color=c("Gleichverteilt","R zufallsgeneriert"))
+  labs(color=c("Gleichverteilt","R zufallsgeneriert")) 
 ```
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 # doing the same with the exponential distribution
-exponential_random_inversion <- (-1/lambda) * log(1 - uniform_random)
-exponential_random_r <- rexp(n, rate = lambda)
+exponential_random_inversion <- -log(1 - uniform_random) / lambda
+exponential_random_r <- rexp(n, rate =lambda)
+
 
 ggplot()+
-  geom_histogram(aes(exponential_random_inversion, fill="blue"), alpha=0.5) +
-  geom_histogram(aes(exponential_random_r, fill="red"), alpha=0.5) +
+  geom_histogram(aes(exponential_random_inversion, fill="inverse Exponentialfunktion"), alpha=0.5) +
+  geom_histogram(aes(exponential_random_r, fill="R generierte Exponentialverteilung"), alpha=0.5) +
   labs(title = "Exponential Distribution") +
   theme_minimal()
 
 
-ggplot() +
-  geom_qq(aes(sample = exponential_random_inversion), color = "blue") +
-  geom_qq(aes(sample = exponential_random_r), color = "red") +
-  labs(title = "QQ-Plot - Exponential Distribution",
-       x = "Theoretical Quantiles",
-       y = "Sample Quantiles") +
-  theme_minimal()
 
+qqplot(exponential_random_inversion, exponential_random_r, 
+       ylab="inverse Exponentialfunktion",
+       xlab="R generierte Exponentialverteilung",
+       main="QQ-Plot - Exponential Distribution")
 ```
 
 Die Plots zeigen, dass es sich bei den transformierten gleichverteilten Zufallszahlen, um die gleiche Verteilung wie die der in R zufallsgenerierten Verteilungen handelt.
 
 ### Normalverteilung
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 n <- 10000
 u <- runif(n)
 v <- runif(n)
@@ -82,8 +75,8 @@ ggplot()+
   theme_minimal()
 
 ggplot() +
-  geom_qq(aes(sample = z), color = "blue") +
-  geom_qq(aes(sample = normal_random_r), color = "red") +
+  geom_qq(aes(sample = z, col="Inverse")) +
+  geom_qq(aes(sample = normal_random_r, col="random")) +
   labs(title = "QQ-Plot - Normal Distribution",
        x = "Theoretical Quantiles",
        y = "Sample Quantiles") +
@@ -92,9 +85,9 @@ ggplot() +
 
 Die Verteilung der transformierten Zufallszahlen liegen auf den von R generierten normalverteilten Zufallszahlen.
 
-### Gleichverteilung
+### Zufallszahlen generieren
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 # Random.org erzeugte Zufallszahlen
 file_path <- "data/random_org.txt"
 uniform_random_org <- scan(file_path, sep="\n")
@@ -140,8 +133,8 @@ for(i in 1:n)
   a <- c(a[2], a[3], z) # aktualisiere Vektor a: z an dritter Position. Entferne a1
   z <- (a[1]*1+a[2]*2+a[3]*3) # aktualisiere z anhand des a Vektors
 }
-hist(uniform_own, main="The Last Chaos Digits")
-plot(embed(uniform_own, 2), main="The Last Chaos Digits")
+hist(uniform_own, main="The Last Chaos Digits", xlim=c(0,1000000))
+plot(embed(uniform_own, 2), main="The Last Chaos Digits", xlim=c(0,1000000), ylim=c(0,1000000))
 
 # Mersenne twister
 random_mersenne_twister <- runif(n)
